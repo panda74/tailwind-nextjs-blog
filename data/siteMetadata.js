@@ -7,7 +7,7 @@ const siteMetadata = {
   language: 'zh-CN',
   theme: 'system', // system, dark or light
   siteUrl: 'https://blog.panda74.fun',
-  siteRepo: 'https://github.com/timlrx/tailwind-nextjs-starter-blog',
+  siteRepo: 'https://github.com/panda74/tailwind-nextjs-blog',
   siteLogo: '/static/images/logo.png',
   socialBanner: '/static/images/ocean.jpeg',
   email: 'ryexiong@gmail.com',
@@ -35,11 +35,11 @@ const siteMetadata = {
     //   googleAnalyticsId: '', // e.g. G-XXXXXXX
     // },
   },
-  // newsletter: {
-  //   // supports mailchimp, buttondown, convertkit, klaviyo, revue, emailoctopus
-  //   // Please add your .env file and modify it according to your selection
-  //   provider: 'buttondown',
-  // },
+  newsletter: {
+    // supports mailchimp, buttondown, convertkit, klaviyo, revue, emailoctopus
+    // Please add your .env file and modify it according to your selection
+    provider: 'buttondown',
+  },
   comments: {
     // If you want to use an analytics provider you have to add it to the
     // content security policy in the `next.config.js` file.
