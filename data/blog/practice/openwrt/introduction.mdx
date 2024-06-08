@@ -1,0 +1,55 @@
+---
+title: OpenWrt软路由入门
+date: '2023-04-15'
+tags: ['OpenWrt','Linux']
+summary: Orange Pi R1 Plus刷入OpenWrt做软路由
+---
+## 前言
+
+一直有软路由的需求，开始想过原路由直接刷入 OpenWrt 当软路由，但手里这台红米 AX3000 要破解 SSH 权限还没有合适的固件。索性淘了个开发板当软路由。
+
+## 硬件准备
+
+- Orange Pi R1 Plus LTS
+- 5v/2a 或者 3a 电源适配器
+- TF 读卡器与 TF（microSD）卡
+- 一根网线
+- 任意操作系统电脑
+
+![hardware](/static/images/openwrt/hardware.jpg)
+
+## 烧录 OpenWrt
+
+因为我用作软路由的设备是香橙派，所以这里打开[香橙派官网](http://www.orangepi.cn/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-Pi-R1-Plus-LTS-Router.html)下载 openwrt 镜像。注意这里下载好的镜像文件是 tar.gz 结尾的，我们需要最终解压成**.img**的后缀名。镜像文件准备好了，我们开始做启动盘。此时要把镜像文件烧录到 TF 卡，可供选择的软件有很多（[balena](https://www.balena.io/etcher)、[Rufus](https://rufus.ie/zh/)），因为我电脑是 Ubantu 系统自带的有烧录软件就不下载了。然后将 TF 卡放入读卡器并插入电脑 USB 接口，完成烧录。
+
+![burning](/static/images/openwrt/burning.png)
+
+最后取出 TF 卡，插入 orange pi，接上电源，sys 指示灯开始闪烁然后常亮就代表系统正常启动。
+
+## 软路由接线
+
+接线是个重头戏，这里需要好好讲一讲。开发板用作软路由时担任不同的角色，就是我们常说的主路由，旁路由，接线方式不尽相同。这里为了方便讲解我用 ProcessOn 做了张图。
+
+![wiring](/static/images/openwrt/wiring.png)
+
+大家可以看到在不加软路由前，也就是我们日常上网，这些机器是怎么布局的。我们在网上冲浪就相当于是数据包之间的传输，那么我们是怎么获取到数据的呢，首先由运营商提供的光纤入户，然后插入光猫，光猫把光信号转换为电信号，之后接入网线插入路由，路由器把电信号转换为电磁波，这样我们就能接收到数据了。而我们在现有网络布局中加入开发板充当主路由时，这时由开发板进行 PPPoE 拨号上网，接管原有路由器一些功能，此时原有路由器就变成了无线 AP，只具备 WIFI 中继功能。而加入的开发板充当旁路由时，当我们从手机等终端设备发出一个数据包时，数据包总是由我们的终端设备经由旁路由作为终端设备对外数据交互的第一层网关至目的地址。他并不会影响现有的网络布局，而只是充当一个旁路网关。
+
+如果你选择做主路由，那么还需要考虑一点，_PPPoE 拨号设备_，为什么这么写呢，因为你家里的 WIFI 进行拨号上网的可能不是路由器，而是光猫，一般宽带师傅为了省事都会让光猫拨号上网。光猫是拨号还是桥接插线也会不同。如果是光猫拨号那么软路由接线就非常简单了，软路由 wan 口连接光猫，lan 口连接路由器 wan 口就可以上网了。如果原来网络是路由器拨号，我们需要将软路由 lan 口连接路由器 wan 口，wan 口连接光猫。
+
+如果你想采用旁路由方案，那么就和电脑有线上网接线一样，路由器 lan 口接上软路由 lan 口。
+
+## OpenWrt 后台配置
+
+这里以我采用的方案光猫桥接,软路由拨号，路由器中继为例。打开路由器后台，我的是小米的 192.168.31.1，找到上网设置，点击工作模式切换选择有线中继模式。
+
+![miwifi](/static/images/openwrt/miwifi.png)
+
+设置好后会给你新的后台地址，一定要记住，一定要记住，重要的事情说三遍，原来的后来地址就没用了，这里我们需要将软路由 lan 口连接路由器 wan 口，wan 口连接光猫，之后进入 openwrt 后台 192.168.2.1 在接口 wan 口设置将协议改为 PPPoE,pap/chap 用户名密码填上你宽带的用户名密码，点击保存保存并应用就成功了。
+
+![openwrt](/static/images/openwrt/openwrt.png)
+
+采用旁路由方案时可以参考这篇博客，[树莓派 4B OpenWrt 旁路由教程](https://cyrusyip.org/zh-cn/post/2021/08/30/raspberry-pi-4b-openwrt/)
+
+## 写在后面
+
+至此，我们已经迈进了 openwrt 的新世界了，当然这个过程会踩很多的坑，这也仅仅是个开始。

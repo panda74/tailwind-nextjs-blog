@@ -1,2 +1,1 @@
-# tailwind-nextjs-blog
-个人博客
+# 求知若渴 虚心若愚

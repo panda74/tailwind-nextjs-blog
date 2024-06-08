@@ -1,0 +1,437 @@
+---
+title: 面试知识点
+date: '2023-11-05'
+tags: ['面试']
+summary: 面试知识总结
+---
+## 面试知识点
+
+[100+掘金高质量前端文章合集](https://juejin.cn/post/7231081140790476857#user-content-content8)，掘金上总结的全集，每个知识点带篇文章 👍
+
+### JavaScript 篇
+
+[浏览器工作原理（宝藏好文！强烈推荐！！！）](https://blog.poetries.top/browser-working-principle/guide/part1/lesson01.html)
+
+#### 原型与原型链
+
+在 JavaScript 中是使用构造函数来新建一个对象的，每一个构造函数的内部都有一个 prototype 属性，它的属性值是一个对象，这个对象包含了该构造函数的所有实例共享的属性和方法。（同时默认包含 constructor 属性指向该构造函数）怎么共享的？当使用构造函数新建一个对象后，在这个对象的内部包含一个指针，指向构造函数 prototype 属性对应的值，浏览器实现 `__proto__`属性来访问 ，ES5 新增`Object.getPrototypeOf()`方法获取对象的原型。
+
+当访问一个对象的属性时，如果这个对象内部不存在这个属性，那么它就会去它的原型对象里找这个属性，这个原型对象又会有自己的原型，于是就这样一直找下去，也就是原型链的概念。按照 MDN 文档的说法[^1]，原型链的尽头是`null`。 在原型链中层层向上寻找直到一个对象`Object.prototype`的原型为`null`也就是`Object.getPrototypeOf(Object.prototype) === null`。根据定义，`null` 没有原型，并作为这个**原型链**（prototype chain）中的最后一个环节。
+
+#### 深拷贝与浅拷贝
+
+**浅拷贝**：浅拷贝是将原始对象的每个属性一次复制，如果属性是基本类型，就会拷贝基本类型的值（在栈内存）。如果属性是引用类型，仅仅拷贝的是内存地址（指向堆内存）。
+
+1.使用展开运算符（...）进行对象的浅拷贝：
+
+`const shallowCopy = { ...originalObject }；`
+
+2.使用`Object.assign()`方法进行对象的浅拷贝：
+
+`const shallowCopy = Object.assign({}, originalObject);`
+
+3.使用`Array.slice()`方法进行数组的浅拷贝：
+
+`const shallowCopy = originalArray.slice();`
+
+**深拷贝**：深拷贝是创建原始对象完全独立的副本，就是在堆内存中开辟一个新的区域存放引用类型，新旧对象引用的是不同的内存地址。
+
+1.使用`JSON.stringify()`和`JSON.parse()`方法进行深拷贝（适用于没有函数和循环引用的简单对象和数组）：
+
+`const deepCopy = JSON.parse(JSON.stringify(originalObject));`
+
+2.手写递归方法[^2]：(递归方法实现深度克隆原理：遍历对象、数组直到里边都是基本数据类型，然后再去复制，就是深度拷贝)
+
+```javascript
+// 检测数据类型的功能函数
+const checkedType = (target) =>
+  Object.prototype.toString
+    .call(target)
+    .replace(/\[object (\w+)\]/, "$1")
+    .toLowerCase();
+// 实现深拷贝（Object/Array）
+const clone = (target) => {
+  let result;
+  let type = checkedType(target);
+  if (type === "object") result = {};
+  else if (type === "array") result = [];
+  else return target;
+  for (let key in target) {
+    if (
+      checkedType(target[key]) === "object" ||
+      checkedType(target[key]) === "array"
+    ) {
+      result[key] = clone(target[key]);
+    } else {
+      result[key] = target[key];
+    }
+  }
+  return result;
+};
+//考虑循环引用的深拷贝函数
+const clone = (target, hash = new WeakMap()) => {
+  let result;
+  let type = checkedType(target);
+  if (type === "object") result = {};
+  else if (type === "array") result = [];
+  else return target;
+  if (hash.get(target)) return target;
+
+  let copyObj = new target.constructor();
+  hash.set(target, copyObj);
+  for (let key in target) {
+    if (
+      checkedType(target[key]) === "object" ||
+      checkedType(target[key]) === "array"
+    ) {
+      result[key] = clone(target[key], hash);
+    } else {
+      result[key] = target[key];
+    }
+  }
+  return result;
+};
+//调用方法
+const obj = {
+  name: "Chen",
+  detail: {
+    age: "18",
+    height: "180",
+    bodyWeight: "68",
+  },
+  hobby: ["see a film", "write the code", "play basketball", "tourism"],
+};
+
+const obj1 = clone(obj);
+console.log(obj1); // { name: 'Chen',detail: { age: '18', height: '180', bodyWeight: '68' },  hobby: [ 'see a film', 'write the code', 'play basketball', 'tourism' ]}
+console.log(obj1 === obj); // false
+```
+
+#### 闭包
+
+**闭包**[^3]（closure）是一个函数以及其捆绑的周边环境状态（**lexical environment**，**词法环境**）的引用的组合。换而言之，闭包让开发者可以从内部函数访问外部函数的作用域。
+
+使用闭包的场景主要有两点：创建私有方法与延长变量的生命周期
+
+> 编程语言中，比如 Java，是支持将方法声明为私有的，即它们只能被同一个类中的其他方法所调用。
+>
+> 而 JavaScript 没有这种原生支持，但我们可以使用闭包来模拟私有方法。私有方法不仅仅有利于限制对代码的访问：还提供了管理全局命名空间的强大能力，避免非核心的方法弄乱了代码的公共接口部分
+
+**使用场景**：
+
+1.回调函数使用闭包
+
+```javascript
+function makeSizer(size) {
+  return function () {
+    document.body.style.fontSize = size + "px";
+  };
+}
+
+var size12 = makeSizer(12);
+var size14 = makeSizer(14);
+var size16 = makeSizer(16);
+```
+
+2.节流防抖
+
+```javascript
+// 节流
+function throttle(fn, timeout) {
+  let timer = null;
+  return function (...arg) {
+    if (timer) return;
+    timer = setTimeout(() => {
+      fn.apply(this, arg);
+      timer = null;
+    }, timeout);
+  };
+}
+
+// 防抖
+function debounce(fn, timeout) {
+  let timer = null;
+  return function (...arg) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(this, arg);
+    }, timeout);
+  };
+}
+```
+
+3.柯里化实现
+
+```javascript
+function curry(fn, len = fn.length) {
+  return _curry(fn, len);
+}
+
+function _curry(fn, len, ...arg) {
+  return function (...params) {
+    let _arg = [...arg, ...params];
+    if (_arg.length >= len) {
+      return fn.apply(this, _arg);
+    } else {
+      return _curry.call(this, fn, len, ..._arg);
+    }
+  };
+}
+
+let fn = curry(function (a, b, c, d, e) {
+  console.log(a + b + c + d + e);
+});
+
+fn(1, 2, 3, 4, 5); // 15
+fn(1, 2)(3, 4, 5);
+fn(1, 2)(3)(4)(5);
+fn(1)(2)(3)(4)(5);
+```
+
+4.[Vue 源码学习之 Vue 对于闭包的使用](https://blog.csdn.net/u010651383/article/details/104258526)
+
+#### 事件循环（浏览器版）
+
+在浏览器中，事件循环（Event Loop）是一种用于处理异步任务的机制。它负责管理和调度各种任务的执行顺序。
+
+**宏（Macro)任务**：宏任务是指由浏览器提供的任务源，如定时器回调、I/O 操作、UI 渲染等。每个宏任务会在事件循环的每一轮中执行一次，并且宏任务之间有固定的执行顺序。常见的宏任务包括 setTimeout、setInterval、AJAX 请求等。
+
+**微(Micro)任务**：微任务是更小粒度的任务，在宏任务执行完毕后立即执行。常见的微任务包括 Promise 的 then 回调、MutationObserver 回调等。
+
+事件循环的执行过程如下：
+
+1. 执行当前宏任务：从宏任务队列中取出一个任务执行。
+2. 执行所有微任务：依次执行微任务队列中的所有任务，直到微任务队列为空。
+3. 更新渲染：如果需要进行页面重新渲染，则进行渲染操作。
+4. 检查是否需要执行下一轮宏任务：如果宏任务队列不为空，则回到步骤 1；否则，等待新的任务加入宏任务队列。
+
+微任务的执行时机比宏任务更早，即使在同一个宏任务中产生的微任务也会在下一个宏任务之前执行。
+
+---
+
+### TypeScript 篇
+
+#### 函数重载
+
+函数重载是一种允许函数在不同参数数量或参数类型下具有不同的返回类型或行为的特性。这允许您以一种更灵活的方式定义函数，并根据传入的参数类型或数量来选择适当的行为或返回类型。
+
+要定义方法重载，您需要按照以下步骤进行：
+
+1. 首先，定义一个函数的多个签名（overload signatures）。TypeScript 中的**函数签名**是用来描述函数类型的一种方式。它由**参数类型和返回类型**组成，可以帮助我们在编写代码时进行类型检查，并提供代码提示。
+
+2. 然后，定义一个实际的函数体，这个函数体实现了多个签名所涵盖的不同情况。
+
+#### 泛型
+
+在 TypeScript 中泛型是一种用于创建可重用代码的工具，他在允许我们在定义函数、类或接口时使用类型参数。通过使用泛型，我们可以在编写代码时不指定具体的类型，而是将类型作为参数传递给函数、类或者接口，使其具有更广泛的适用性。
+
+#### 枚举
+
+在 TypeScript 中，枚举（Enum）是一种用于定义一组具名的常量的数据类型。枚举类型可以帮助我们在代码中使用更具有可读性和可维护性的常量。
+
+每个枚举都带有一个值，他是可以是常量也可以计算得到，枚举第一个成员没有初始化，默认是 0，依次递增。
+
+#### 元组
+
+在 TypeScript 中，元组（Tuple）是一种特殊的数组类型，它允许我们指定数组中每个元素的类型，并且元素的数量是固定的且有序的。
+
+---
+
+### Vue 篇
+
+#### Vuex 的原理
+
+在知晓原理之前，有必要了解 vuex 是什么？它的出现解决什么问题？关于这些问题，官网已经做了回答[^4]：
+
+> Vuex 是一个专为 Vue.js 应用程序开发的**状态管理模式 + 库**。它采用集中式存储管理应用的所有组件的状态，并以相应的规则保证状态以一种可预测的方式发生变化。
+>
+> 当我们的应用遇到多个组件共享状态时，单向数据流的简洁性很容易被破坏：
+>
+> 1. 多个视图依赖于同一状态。
+> 2. 来自不同视图的行为需要变更同一状态。
+>
+> 对于问题一，传参的方法对于多层嵌套的组件将会非常繁琐，并且对于兄弟组件间的状态传递无能为力。对于问题二，我们经常会采用父子组件直接引用或者通过事件来变更和同步状态的多份拷贝。以上的这些模式非常脆弱，通常会导致无法维护的代码。
+>
+> 因此，我们为什么不把组件的共享状态抽取出来，以一个全局单例模式管理呢？在这种模式下，我们的组件树构成了一个巨大的“视图”，不管在树的哪个位置，任何组件都能获取状态或者触发行为。
+
+**原理**：Vuex 实现了一个单向数据流，在全局拥有一个 State 存放数据，当组件要更改 State 中的数据时，必须通过 Mutation 提交修改信息，Mutation 同时提供了订阅者模式供外部插件调用获取 State 数据的更新。
+
+[Vuex 核心流程图](https://vuex.vuejs.org/vuex.png)
+
+**核心流程**：Vue Components 是 vue 组件，组件会触发（dispatch）一些事件或动作，也就是图中的 Actions; 在组件中发出的动作，肯定是想获取或者改变数据的，但是在 vuex 中，数据是集中管理的，不能直接去更改数据，所以会把这个动作提交（Commit）到 Mutations 中; 然后 Mutations 就去改变（Mutate）State 中的数据; 当 State 中的数据被改变之后，就会重新渲染（Render）到 VueComponents 中去，组件展示更新后的数据，完成一个流程。
+
+#### Pinia 与 Vuex 的区别
+
+[这一次彻底搞懂 Pinia](https://juejin.cn/post/7112691686085492767?searchId=20231019212304B5A64EA8810891823FE9) 放篇文章在这后续填坑
+
+官网给的对比[^5]：
+
+> Pinia API 与 Vuex(小于等于4) 也有很多不同，即：
+>
+> 1. _mutation_ 已被弃用。它们经常被认为是**极其冗余的**。它们初衷是带来 devtools 的集成方案，但这已不再是一个问题了。
+> 2. 无需要创建自定义的复杂包装器来支持 TypeScript，一切都可标注类型，API 的设计方式是尽可能地利用 TS 类型推理。
+> 3. 无过多的魔法字符串注入，只需要导入函数并调用它们，然后享受自动补全的乐趣就好。
+> 4. 无需要动态添加 Store，它们默认都是动态的，甚至你可能都不会注意到这点。注意，你仍然可以在任何时候手动使用一个 Store 来注册它，但因为它是自动的，所以你不需要担心它。
+> 5. 不再有嵌套结构的**模块**。你仍然可以通过导入和使用另一个 Store 来隐含地嵌套 stores 空间。虽然 Pinia 从设计上提供的是一个扁平的结构，但仍然能够在 Store 之间进行交叉组合。**你甚至可以让 Stores 有循环依赖关系**。
+> 6. 不再有**可命名的模块**。考虑到 Store 的扁平架构，Store 的命名取决于它们的定义方式，你甚至可以说所有 Store 都应该命名。
+
+#### Vue 中 Key 的作用
+
+1. v-if 中使用 key。由于 Vue 会尽可能高效地渲染元素，通常会复用已有元素而不是从头渲染。因此使用 v-if 来实现元素切换时，切换前后含有相同类型的元素，就会被复用，元素的状态不会被清除（input 的输入不会被清除）。使用 key 来唯一标识一个元素，就不会被复用。
+2. v-for 中使用 key。用 v-for 更新已渲染过的元素列表时，它默认使用“就地复用”的策略。因此通过为每个列表项提供一个 key 值，来以便 Vue 跟踪元素的身份，从而高效的实现复用。key 是为 Vue 中 vnode 的唯一标记，通过这个 key，diff 操作可以更准确、更快速。
+
+---
+
+### 性能优化篇
+
+#### 回流（重排）与重绘
+
+**回流**：当渲染树 render tree 中的一部分或全部因为元素的规模尺寸，布局，隐藏等改变而需要重新构建，这就称为回流。简单来说，回流就是计算元素在设备中的确切位置和大小并且重新绘制。
+
+会导致回流的操作：
+
+1. 页面首次渲染
+2. 浏览器窗口大小发生改变（resize 事件）
+3. 元素字体发生改变
+4. 添加删除 dom 元素
+
+**重绘**：当渲染树 render tree 中的一些元素需要更新样式，但这些样式属性只是改变元素的外观，风格，而不会影响布局，比如 color、background、border-radius。
+
+#### 手写防抖与节流
+
+**防抖**：触发高频事件后 n 秒后函数只会执行一次，如果 n 秒内高频事件再次被触发，则重新计算时间。
+
+防抖常用场景：
+
+1. 按钮提交场景：防止多次提交按钮，只执行最后提交的一次
+2. 服务端验证场景：表单验证需要服务端配合，只执行一段连续的输入事件的最后一次
+3. 搜索联想词功能：使用 `lodash.debounce` 函数
+
+```javascript
+function debounce(fn) {
+  let timeout = null;
+  // 创建一个标记用来存放定时器的返回值
+  return function () {
+    clearTimeout(timeout);
+    // 每当用户输入的时候把前一个 setTimeout clear 掉
+    timeout = setTimeout(() => {
+      // 然后又创建一个新的 setTimeout, 这样就能保证输入字符后的interval 间隔内如果还有字符输入的话，就不会执行fn 函数
+      fn.apply(this, arguments);
+    }, 500);
+  };
+}
+function sayHi() {
+  console.log("防抖成功");
+}
+var inp = document.getElementById("inp");
+inp.addEventListener("input", debounce(sayHi)); // 防抖
+```
+
+**节流**：高频事件触发，但在 n 秒内只会执行一次。节流会稀释函数执行的频率。
+
+节流常用场景：
+
+1. 页面 scroll、resize 事件处理：使用节流来优化滚动事件的处理，减少过多的重绘和计算
+2. 动画触发控制：使用节流来限制动画的触发频率，保证流畅度并节省资源。(监听鼠标滚轮事件 mousewheel，并利用滚轮来触发一个图片的放大功能。)
+
+```javascript
+function throttle(fn) {
+  let canRun = true; // 通过闭包保存一个标记
+  return function () {
+    if (!canRun) return;
+    // 在函数开头判断标记是否为 true，不为 true 则return
+    canRun = false; // 立即设置为 false
+    setTimeout(() => {
+      // 将外部传入的函数的执行放在 setTimeout 中
+      fn.apply(this, arguments);
+      // 最后在 setTimeout 执行完毕后再把标记设置为true(关键)表示可以执行下一次循环了。当定时器没有执行的时候标记永远是false，在开头被 return 掉
+      canRun = true;
+    }, 500);
+  };
+}
+function sayHi(e) {
+  console.log(e.target.innerWidth, e.target.innerHeight);
+}
+window.addEventListener("resize", throttle(sayHi));
+```
+
+---
+
+[^1]: [MDN 文档之继承与原型链](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Inheritance_and_the_prototype_chain)
+[^2]: [掘金文章之深拷贝与浅拷贝](https://juejin.cn/post/7134970746580762637?searchId=20231019200404725E668B747644942C8D)
+[^3]: [MDN 文档之闭包](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Closures)
+[^4]: [Vuex 官方文档](https://vuex.vuejs.org/zh/)
+[^5]: [Pinia 官方文档](https://pinia.vuejs.org/zh/introduction.html)
+
+## 简历项目
+
+#### **使用 TypeScript 对 Axios 整个二次封装 （全局错误拦截、常用请求封装、全局请求 Loading、取消重复请求 等）。**
+
+主要是对请求拦截器与响应拦截器的二次封装。在**请求拦截器**里添加全局 loading 和请求头添加身份验证 token。在**响应拦截器**通过服务器返回的状态码进行全局错误拦截，错误消息的提示。状态码等于 401 登录失效处理（本地清除 token，路由跳转登陆界面）。
+
+**取消重复请求**，具体实现上，通过将每个请求的标识（URL）以及对应的取消函数存储在一个 Map 中，来确保每个请求只被执行一次。每次发起请求时，会先检查该请求是否已经在 map 集合里存在，如果存在取消当前请求。这个代码实现的是一个**防抖**（Debounce）效果。防抖的作用是在一段时间内只执行一次函数，防抖的作用是在一段时间内只执行一次函数。
+
+#### 对表格的所有操作基本都封装成了 Hooks （表格数据搜索、重置、查询、分页、多选、单条数据操作、文件上 传、下载、格式化单元格内容）。
+
+把一个表格页面所有重复的功能 **（表格多选、查询、重置、刷新、分页器、数据操作二次确认、文件下载、文件上传）** 都封装成 **Hooks** 函数钩子，然后在 **Pro-Table** 组件中使用这些函数钩子。在页面中使用的时，只需传给 **Pro-Table** 当前表格数据的请求 **API**，表格配置项 **columns** 就行了，数据传输都使用作用域插槽从 **Pro-Table** 传给父组件就能在页面上获取到了。
+
+可以看到搜索区域的字段都是存在于表格当中的，并且每个页面的搜索、重置方法都是一样的逻辑，只是不同的查询参数而已。我们完全可以在传表格配置项 **columns** 时，直接指定某个字段的 **search:true** 就能把该项变为搜索项，然后使用 **SearchType** 字段可以指定搜索框的类型，最后把表格的搜索方法都封装成 **Hooks** 钩子函数。页面上完全就不会存在搜索逻辑了。
+
+先定义 reactive 响应式对象，包括表格数据、查询参数、分页数据等。然后定义获取表格数据方法（接受搜索参数），拿到表格数据和更新分页信息。搜索就是更新搜索参数，重新获取数据。重置将搜索、分页设为默认值，重新获取数据。文件上传则是新建 formData 实例加入 append file 然后向后端发送 post 请求。文件下载则是后端返回数据前端读取为 blob 格式，然后创建 blob URL，创建 a 标签 href 属性为 url，download 属性为文件名，点击下载，完成移除 a 标签。
+
+多个文件上传这个要和后端商量，如果后端的接口时一次请求带一个文件那就用 el-upload 自带的 multiple 写 http-request 方法，如果后端一次请求带多个文件就遍历 file-list 添加到一个 formdata 里再发送请求
+
+#### 基于 el-table 二次封装 table 组件实现常用的业务逻辑的可复用（单条数据删除、批量删除、重置密码、状态切换、支持现跨页勾选数据等）
+
+el-table 支持多选跨页勾选数据，只需要在 el-table 设置 row-key 属性，然后在 el-table-column 中:reserve-selection="true"
+
+重置密码，状态切换是后端接口，删除后端接口接收的是个数组
+
+封装一个 hooks useHandleData 接收参数 api,数据的 id 参数等，提示信息，作用是提示确认信息
+
+#### 封装 echarts 初始化组件，采用 scale 动态屏幕适配方案实现自适应布局。
+
+利用 CSS 的 `transform：scale` 属性对页面布局进行自适应缩放，首先根据浏览器大小确认缩放比例，初始化 echarts 组件时直接设置数据大屏缩放比例，监听浏览器窗口大小变化，将新的比例赋给 scale 变量
+
+#### 使用 vue-router 进行路由权限拦截（403 页面）、页面按钮权限配置、路由懒加载。
+
+路由权限拦截：添加一个全局前置守卫（beforeEach）来拦截需要进行权限控制的路由。在每次路由切换之前进行权限检查，判断用户是否具有访问该路由的权限。如果有权限，则继续跳转到下一个路由，否则跳转到 403 页面。
+
+页面按钮权限：自定义一个 v-auth 指令，获取当前页面的权限码列表，判断绑定的状态码是否在列表内，没有则移除元素
+
+懒加载：首先，在路由配置文件中将要懒加载的路由组件改为使用 `import()` 异步加载方式。在 Webpack 4 及以上版本中，默认支持路由懒加载。在打包后生成的 `js` 文件中，Vue Router 会将每个路由组件打包成单独的 `js` 文件，这样可以在用户需要访问该组件时再进行加载，从而减少初始加载的时间和带宽占用
+
+#### 使用 keep-alive 对整个页面进行缓存，支持多级嵌套页面（缓存路由里可配置、页面切换带动画）。
+
+router-view 也提供给我们一个插槽，有两个属性 Component：要渲染的组件； route：解析出的标准化路由对象,可以用于 <transition/> 和 <keep-alive/> 组件来包裹路由组件。
+
+在 `<keep-alive>` 组件中使用 `:include` 属性来指定需要缓存的组件名称数组。
+
+[浅析＜ router-view ＞ v-slot 事例](https://blog.csdn.net/m13012606980/article/details/126028170)
+
+#### 常用自定义指令开发（复制、水印、拖拽、节流、防抖、长按等）
+
+复制：调用浏览器调用 Clipboard API 中的 writeText() 方法将选中的内容写入剪贴板配合 elementui 弹出成功的消息提示
+
+水印：使用 canvas 特性生成 base64 格式的图片文件，设置其字体大小，颜色等。将其设置为背景图片，从而实现页面或组件水印效果
+
+拖拽：1、设置需要拖拽的元素为 absolute，其父元素为 relative。
+
+2、鼠标按下(onmousedown)时记录目标元素当前的 left 和 top 值。
+
+3、鼠标移动(onmousemove)时计算每次移动的横向距离和纵向距离的变化值，并改变元素的 left 和 top 值
+
+4、鼠标松开(onmouseup)时完成一次拖拽
+
+节流：第一次点击，立即调用方法并禁用按钮，等延迟结束再次激活按钮，将需要触发的方法绑定在指令上。
+
+防抖：setTimeout 设置延迟执行，如果再次点击 clearInterval 重新计时·
+
+长按：
+
+1. 在 mounted 钩子函数中，判断是否传入了回调函数。如果没有传入，则抛出异常。
+2. 定义变量 pressTimer，用于记录按下的时间。
+3. 创建 start 函数，在 mousedown 和 touchstart 事件发生的时候启动计时器，在一定时间后执行 handler 函数。
+4. 创建 cancel 函数，在 mouseup、mouseout、touchend 和 touchcancel 事件发生的时候取消计时器。
+5. 创建 handler 函数，在长按时间到达后调用回调函数。同时清空 pressTimer 计时器。
+6. 添加事件监听器，分别监听 mousedown、touchstart、click、mouseout、touchend 和 touchcancel 事件。在事件触发时执行相应的函数。

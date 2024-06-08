@@ -1,0 +1,142 @@
+---
+title: Memos无服务器部署
+date: '2023-05-13'
+tags: ['Docker','OpenWrt']
+summary: 将Memos部署在OpenWrt Docker中利用zeroTier实现内网穿透，外网访问
+---
+## 前言
+
+前几天网上冲浪发现个宝藏开源项目 Memos——A lightweight, self-hosted memo hub. Open Source and Free forever[^1].
+
+我理解为一个拥有社交属性的备忘录，提供了与好朋友分享一些奇思妙想的平台。并且颜值超高！
+
+因为它是通过 Docker 部署的，就可以把它挂载到软路由上，然后通过 ZeroTier 构建虚拟局域网，将终端设备添加进来，这样不需要购买服务器一样可以随时随地使用 Memos。
+
+## 在 openWrt docker 中部署
+
+在 ubantu 系统中，<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>打开终端链接软路由
+
+```bash
+ssh root@192.168.2.1
+```
+
+创建 memos 文件夹并进入
+
+```bash
+mkdir memos -p
+cd memos
+```
+
+docker 部署[^2]
+
+```bash
+docker run -d \
+  --init \
+  --name memos \
+  --publish 5230:5230 \
+  --volume ~/.memos/:/var/opt/memos \
+  ghcr.io/usememos/memos:latest
+```
+
+输入命令查看是否部署成功
+
+```bash
+docker logs memos
+```
+
+至此 memos 已经部署成功了。我们可以通过局域网 192.168.2.1:5230 访问它。初次进入默认语言为英文，可以在 Settings>>Preferences>>Language 中选择简体中文。
+
+值得一提的是 Memos 集成了 ChatGPT 的功能只需在设置>>系统>>OpenAI: API Key 中填写自己的 Key 便可使用。
+
+![chatgpt](/static/images/docker/openKey.png)
+
+## ZeroTier 创建虚拟局域网
+
+仅仅通过局域网访问达不到我们的需求，此时借助于免费强大的内网穿透工具 ZeroTier。进入[ZeroTier 官网][2]，点击 Sign Up 注册账号，注册成功自动跳转到个人中心，此时点击黄色按钮*Create A Network*创建虚拟局域网络，然后点击进入配置。如图
+
+![zerotier](/static/images/docker/zerotier.png)
+
+### >>Settings
+
+- **Basics**中 (记住 Netwok ID!!!待会会用)Name 输入框设置网络名称（可选），Access Control 单选框选择 Private。
+- **Advanced**中 IPv4 Auto-Assign 中选择自己喜欢的网段
+
+此时已经完成了基础功能的设置，下面进行终端配置。
+
+### openWrt 配置
+
+如果你刷的固件中自带的有 zerotier 插件那么就非常简单。只需要进入 openwrt 后台管理地址，找到 zerotier 在 ZeroTier Network ID 中填入刚才创建的虚拟局域网的 Network ID。
+
+如果没有需要进行如下设置[^3]
+
+1. 终端连接 openwrt 安装 zerotier
+
+   ```bash
+   ssh root@192.168.2.1
+   opkg update
+   opkg install zerotier
+   ```
+
+2. 创建配置文件
+
+   ```bash
+   mkdir -p /etc/zerotier
+   uci set zerotier.openwrt_network=zerotier
+   uci add_list zerotier.openwrt_network.join='你的Network ID'
+   uci set zerotier.openwrt_network.enabled='1'
+   uci set zerotier.openwrt_network.config_path='/etc/zerotier'
+   uci commit zerotier
+   ```
+
+3. 启动
+
+   ```bash
+   /etc/init.d/zerotier enable
+   /etc/init.d/zerotier start
+   ```
+
+4. 浏览器进入 openwrt 后台管理地址
+
+- 依次点击>>**网络**>>**接口**>>"添加新接口"。
+
+- 名称自定义，协议选不配置协议，设备选 z 开头的适配器。点击“创建接口”按钮。![createLan](/static/images/docker/createLan.png)
+
+- 创建成功在上方会出现选项卡，点击“防火墙设置”，在“创建/分配防火墙区域”选择“**lan**”，点击保存然后一定要**保存并应用！！！**
+
+- 回到后台管理界面依次点击>>**网络**>>**防火墙**>>"通信规则"
+
+- 名称自定义，协议选 UDP，源区域选任意区域，目标区域选设备，目标端口填 9993。**保存并应用**![firewallRule](/static/images/docker/firewallRule.png)
+
+- 重启 openWrt
+
+  ```bash
+  reboot
+  ```
+
+  至此就完成 openwrt 的 zerotier 配置。
+
+## ZeroTier 权限授权
+
+进入[zerotier 个人中心][3]，就可以在刚才创建的网络的 Members 中看到所有加入进来的终端设备,此时只有软路由一个。
+
+### >>Members
+
+- 点击**Auth**单选框授权
+- 在**Name/Description**填写信息以便区分不同终端设备
+- 在**Managed IPs**中记住软路由的 IP 地址，这也是外网访问地址。
+
+## 终端配置
+
+在[zerotier 下载地址][4],找到对应的安装包下载并安装(Windows、Android、IOS 等)。添加 Network,然后设置里填入 Network ID。由于都是图形化操作界面，使用很简单就不过多赘述。
+
+## 参考
+
+[^1]: [Memos 官网](https://usememos.com/)说明
+[^2]: [Memos 官方文档][5]Docker 部署
+[^3]: [OpenWrt 安装 ZeroTier][6]
+
+[2]: https://www.zerotier.com/
+[3]: https://my.zerotier.com/
+[4]: https://www.zerotier.com/download/
+[5]: https://usememos.com/docs/install/docker
+[6]: https://www.mengmei.moe/share/3362.html
