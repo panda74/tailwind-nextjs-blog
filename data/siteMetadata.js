@@ -3,7 +3,7 @@ const siteMetadata = {
   title: '麦田里的熊',
   author: 'Myles',
   headerTitle: '麦田里的熊',
-  description: '一只在悬崖俯瞰着金色麦田的熊',
+  description: '一只在悬崖守望着金色麦田的熊',
   language: 'zh-CN',
   theme: 'system', // system, dark or light
   siteUrl: 'https://blog.panda74.fun',
@@ -67,7 +67,7 @@ const siteMetadata = {
       // example: https://giscus.app/themes/custom_example.css
       themeURL: '',
       // This corresponds to the `data-lang="en"` in giscus's configurations
-      lang: 'en',
+      lang: 'zh-CN',
     },
   },
   search: {
